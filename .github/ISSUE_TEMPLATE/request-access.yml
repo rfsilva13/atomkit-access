@@ -1,0 +1,55 @@
+name: Test atomkit and contribute
+description: Join the researchers testing atomkit; you get read access to the repository.
+title: "Tester: "
+labels: ["access request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for your interest in atomkit. Each form is read by hand, and GitHub then sends an
+        invitation to the account that opened it.
+
+        **This form is public.** Write nothing you would not put on a web page.
+  - type: input
+    id: name
+    attributes:
+      label: Name
+    validations:
+      required: true
+  - type: input
+    id: institution
+    attributes:
+      label: Institution or group
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Position
+      options:
+        - Student (MSc or PhD)
+        - Postdoctoral researcher
+        - Staff researcher or faculty
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: use
+    attributes:
+      label: What would you test or build with atomkit?
+      description: The ions, codes or data you work with, and what you want to do with the results.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Web page, ORCID or publication list (optional)
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Conditions
+      options:
+        - label: I will not share the code or my access with others while atomkit is shared with testers only.
+          required: true
+        - label: I understand that the atomic codes (FAC, GRASP, AUTOSTRUCTURE, ...) are not included and must be obtained separately.
+          required: true

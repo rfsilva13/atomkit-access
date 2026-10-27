@@ -1,0 +1,98 @@
+# Approval is manual. Only the public repository owner's labels act.
+# Personal-target approvals are paused while GitHub documentation and reported API behaviour disagree.
+name: access
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: access-${{ github.event.issue.user.id }}
+  cancel-in-progress: false
+
+jobs:
+  act:
+    if: >-
+      github.event.sender.login == github.repository_owner &&
+      contains(github.event.issue.labels.*.name, 'access request') &&
+      contains(fromJSON('["approved","declined","revoked"]'), github.event.label.name)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PRIVATE_OWNER: ${{ vars.PRIVATE_OWNER }}
+          PRIVATE_REPO: ${{ vars.PRIVATE_REPO }}
+          PRIVATE_REF: ${{ vars.PRIVATE_REF }}
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        with:
+          script: |
+            const owner = process.env.PRIVATE_OWNER || context.repo.owner;
+            const repo = process.env.PRIVATE_REPO;
+            const ref = process.env.PRIVATE_REF || "main";
+            const issue_number = context.payload.issue.number;
+            const label = context.payload.label.name;
+            // Re-read labels so an old queued approval cannot override a revocation.
+            const { data: issue } = await github.rest.issues.get({ ...context.repo, issue_number });
+            const labels = issue.labels.map(l => typeof l === "string" ? l : l.name);
+            if (!labels.includes("access request") || !labels.includes(label)) return;
+            const user = issue.user.login;
+            const reply = body => github.rest.issues.createComment({ ...context.repo, issue_number, body });
+            const close = () => github.rest.issues.update({ ...context.repo, issue_number, state: "closed" });
+            if (label === "declined") {
+              await reply(`Thank you for your interest, @${user}. atomkit is not being shared more widely at the moment.`);
+              await close();
+              return;
+            }
+            if (!repo || !process.env.ACCESS_TOKEN) {
+              core.setFailed("Set PRIVATE_REPO and ACCESS_TOKEN before granting or removing access.");
+              return;
+            }
+            // github is already an Octokit client; it has no getOctokit method.
+            // Override authentication only for requests to the private target repository.
+            const headers = { authorization: `Bearer ${process.env.ACCESS_TOKEN}` };
+            const admin = (route, parameters = {}) => github.request(route, { owner, repo, ...parameters, headers });
+            if (label === "approved") {
+              if (labels.includes("revoked") || labels.includes("declined")) {
+                core.setFailed("Remove declined/revoked labels before approving this request again.");
+                return;
+              }
+              const { data: target } = await admin("GET /repos/{owner}/{repo}");
+              if (!target.private || target.owner.type !== "Organization") {
+                core.setFailed("Automatic read-only invitations are paused for this target. Use a private organisation target, or resolve the documented/reported personal-repository permission discrepancy before enabling it. No invitation was sent.");
+                return;
+              }
+              // Check the advertised download exists before sending an invitation.
+              await admin("GET /repos/{owner}/{repo}/commits/{ref}", { ref });
+              const invitation = await admin("PUT /repos/{owner}/{repo}/collaborators/{username}", { username: user, permission: "pull" });
+              await reply([
+                invitation.status === 201
+                  ? `Your request is approved, @${user}. Accept the GitHub invitation at https://github.com/${owner}/${repo}/invitations.`
+                  : `Your request is approved, @${user}. Your repository access is already available.`,
+                "",
+                `Download the approved version: https://github.com/${owner}/${repo}/archive/${encodeURIComponent(ref)}.zip`,
+                "Unzip it, open a terminal in the folder, and run the command for your system:",
+                "",
+                "```sh",
+                "sh install.sh  # macOS or Linux",
+                "```",
+                "```powershell",
+                "powershell -ExecutionPolicy Bypass -File install.ps1  # Windows",
+                "```",
+                "",
+                "Installation needs internet to download Python and dependencies. Open a new terminal and type `atomkit gui`.",
+              ].join("\n"));
+              await close();
+            } else if (label === "revoked") {
+              // An unaccepted invitation is separate from an existing collaborator grant.
+              const invitations = await github.paginate("GET /repos/{owner}/{repo}/invitations", { owner, repo, per_page: 100, headers });
+              for (const invitation of invitations) {
+                if (invitation.invitee?.login.toLowerCase() === user.toLowerCase()) {
+                  await admin("DELETE /repos/{owner}/{repo}/invitations/{invitation_id}", { invitation_id: invitation.id });
+                }
+              }
+              await admin("DELETE /repos/{owner}/{repo}/collaborators/{username}", { username: user });
+              await reply(`Direct repository access and pending invitations for @${user} have been removed. Access inherited from an organisation or team must be managed separately.`);
+            }

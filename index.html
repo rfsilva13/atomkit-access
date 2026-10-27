@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>atomkit</title>
+<meta name="description" content="atomkit: describe an atomic-structure calculation once, run it through FAC, GRASP, AUTOSTRUCTURE, MCDFGME, JAC, pCI and others, and get every result back in one format.">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #2f3133;
+  --muted: #5f6468;
+  --bg: #fbfaf7;
+  --panel: #ffffff;
+  --line: #e4e1da;
+  --teal: #0b8f9c;
+  --teal-ink: #ffffff;
+  --orange: #e2862f;
+  --code-bg: #f1efe9;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e8e6e1;
+    --muted: #a6a39c;
+    --bg: #151617;
+    --panel: #1d1f21;
+    --line: #2e3133;
+    --teal: #2bb3bf;
+    --teal-ink: #0d1415;
+    --orange: #f0a056;
+    --code-bg: #232527;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e8e6e1;
+  --muted: #a6a39c;
+  --bg: #151617;
+  --panel: #1d1f21;
+  --line: #2e3133;
+  --teal: #2bb3bf;
+  --teal-ink: #0d1415;
+  --orange: #f0a056;
+  --code-bg: #232527;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 17px/1.6 "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--teal); }
+code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .86em; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+header { padding: 56px 0 24px; }
+.logo { width: min(340px, 78vw); height: auto; display: block; }
+h1 { font-weight: 600; font-size: clamp(28px, 4.6vw, 44px); line-height: 1.15; margin: 28px 0 12px; max-width: 22ch; letter-spacing: -.01em; }
+.lead { color: var(--muted); font-size: clamp(17px, 2.1vw, 20px); max-width: 60ch; margin: 0 0 28px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-block; text-decoration: none; font-weight: 600;
+  padding: 13px 22px; border-radius: 10px; border: 1px solid transparent;
+}
+.btn.primary { background: var(--teal); color: var(--teal-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { color: var(--ink); border-color: var(--line); background: var(--panel); }
+.note { color: var(--muted); font-size: 14px; }
+.shot {
+  margin: 40px 0 8px; border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--panel);
+}
+.shot img { display: block; width: 100%; height: auto; }
+.caption { color: var(--muted); font-size: 14px; margin: 8px 2px 0; }
+section { padding: 44px 0 8px; }
+h2 { font-weight: 600; font-size: 24px; margin: 0 0 18px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+.codes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.codes li { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 12px; font-size: 14.5px; }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 0; line-height: 1.55; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.steps li { counter-increment: s; position: relative; padding-left: 44px; }
+.steps li::before {
+  content: counter(s); position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--teal); color: var(--teal-ink); font-weight: 600; font-size: 15px;
+}
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.two > * { min-width: 0; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } header { padding-top: 36px; } }
+footer { padding: 48px 0 40px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); margin-top: 48px; }
+.theme { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.logo-dark{display:none}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-light{display:none}:root:not([data-theme="light"]) .logo-dark{display:block}}
+:root[data-theme="dark"] .logo-light{display:none}:root[data-theme="dark"] .logo-dark{display:block}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <img class="logo logo-light" src="assets/logo.svg" alt="atomkit" width="494" height="122">
+  <img class="logo logo-dark" src="assets/logo-dark.svg" alt="atomkit" width="494" height="122">
+  <h1>A code-agnostic toolkit for producing, evaluating, and using atomic data.</h1>
+  <p class="lead">
+    atomkit runs the atomic-structure codes (FAC, GRASP, AUTOSTRUCTURE, MCDFGME, JAC, pCI and others)
+    from one input, reads every code's output into the same tables, and writes them in the formats
+    that databases and modelling codes read. Compare codes, calibrate to experiment and export,
+    from a web interface, the terminal or Python.
+  </p>
+  <div class="cta">
+    <a class="btn primary" id="request" href="#access">Test it and contribute</a>
+    <a class="btn ghost" href="#how">How it works</a>
+  </div>
+  <p class="note">atomkit is shared with researchers who want to test it and contribute, while it is prepared for an open release.</p>
+
+  <figure class="shot">
+    <picture>
+      <source srcset="assets/new-calculation-dark.png" media="(prefers-color-scheme: dark)">
+      <img src="assets/new-calculation-light.png" alt="Set up a C III calculation: configurations, physical options and code selection" width="1600" height="900" loading="eager">
+    </picture>
+  </figure>
+  <p class="caption">Choose the atom, configurations and calculation. Edit the input file when you need to.</p>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="card"><h3>Define once</h3><p>Element, ion, configurations and what to compute, in a short text file or a form. Switch codes by changing one word.</p></div>
+      <div class="card"><h3>One table format</h3><p>Levels, lines and rates come back with the same columns from every code, so results compare directly.</p></div>
+      <div class="card"><h3>Compare and calibrate</h3><p>Put codes side by side or against NIST, with matched levels, deviation plots and uncertainties.</p></div>
+      <div class="card"><h3>Export</h3><p>CHIANTI, ADAS adf04, XSAMS, AtomDB, TARDIS, Kurucz, VALD and more, plus atomkit's own text format that keeps every column, its units and source information.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The codes</h2>
+    <ul class="codes">
+      <li>FAC</li><li>GRASP</li><li>AUTOSTRUCTURE</li><li>MCDFGME</li><li>JAC</li><li>pCI</li><li>AMBiT</li><li>Cowan</li><li>ATSP2K</li>
+    </ul>
+    <p class="note">The codes are separate programs under their own licences and are not included. atomkit reads, compares and exports results without any of them installed.</p>
+
+    <figure class="shot">
+      <picture>
+        <source srcset="assets/compare-current-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="assets/compare-current-light.png" alt="The Compare screen: deviation of two calculations from a reference table of level energies" width="1600" height="900" loading="lazy">
+      </picture>
+    </figure>
+    <p class="caption">Compare: calculations against a reference table in one report (test data shown).</p>
+  </section>
+
+  <section id="how">
+    <div class="two">
+      <div>
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li>Fill in the short form below. You need a GitHub account; the form asks for your institution and what you want to test or build with atomkit.</li>
+          <li>Each form is read by hand. GitHub then emails you an invitation to the repository.</li>
+          <li>Accept the invitation and download the version linked in the reply. Run the installer for your system; it downloads Python and dependencies, so this step needs internet.</li>
+        </ol>
+      </div>
+      <div>
+        <h2>Installing, once invited</h2>
+        <pre><code>sh install.sh           # macOS, Linux
+powershell -ExecutionPolicy Bypass -File install.ps1   # Windows
+atomkit gui             # then open the web interface</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="access">
+    <h2>Test it and contribute</h2>
+    <p class="lead" style="margin-bottom:18px">The form is a GitHub issue. It is public, so write nothing private in it. Bug reports, comparisons with your own results and new code interfaces are all welcome.</p>
+    <div class="cta">
+      <a class="btn primary" id="request2" href="#">Open the form</a>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>Ricardo Ferreira da Silva, LIP and University of Lisbon.
+    <button class="theme" id="theme" type="button" aria-label="Switch between light and dark">Theme: auto</button></p>
+</footer>
+
+<script>
+// The form lives in this site's own repository. On GitHub Pages the address is
+// https://<owner>.github.io/<repository>/, so both are read from it; set them here for any other host.
+var OWNER = "", REPO = "";
+(function () {
+  var host = location.hostname, path = location.pathname.split("/").filter(Boolean);
+  if (!OWNER && host.endsWith(".github.io")) OWNER = host.split(".")[0];
+  if (!REPO && host.endsWith(".github.io") && path.length) REPO = path[0];
+  if (OWNER && REPO) {
+    var url = "https://github.com/" + OWNER + "/" + REPO + "/issues/new?template=request-access.yml";
+    document.getElementById("request2").href = url;
+  } else {
+    document.getElementById("request2").removeAttribute("href");
+    document.getElementById("request2").textContent = "The form opens once this page is on GitHub Pages";
+  }
+})();
+
+// Theme switch: auto, light, dark (remembered in this browser only).
+(function () {
+  var b = document.getElementById("theme"), order = ["auto", "light", "dark"], t = "auto";
+  try { t = localStorage.getItem("atomkit-theme") || "auto"; } catch (e) {}
+  function apply() {
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    b.textContent = "Theme: " + t;
+    var dark = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.querySelectorAll("picture source").forEach(function (s) {
+      s.media = t === "auto" ? "(prefers-color-scheme: dark)" : (dark ? "all" : "not all");
+    });
+  }
+  b.addEventListener("click", function () {
+    t = order[(order.indexOf(t) + 1) % order.length];
+    try { localStorage.setItem("atomkit-theme", t); } catch (e) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

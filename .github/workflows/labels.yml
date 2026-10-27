@@ -1,0 +1,28 @@
+# Creates the labels the access workflow uses, once, on the first push (and on demand).
+name: labels
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const want = [
+              { name: "access request", color: "0b8f9c", description: "A request for access to atomkit" },
+              { name: "approved", color: "2da44e", description: "Grant read access to the person who asked" },
+              { name: "declined", color: "8c959f", description: "Reply and close" },
+              { name: "revoked", color: "cf222e", description: "Remove the person's access" },
+            ];
+            const have = (await github.paginate(github.rest.issues.listLabelsForRepo, { ...context.repo })).map(l => l.name);
+            for (const l of want) {
+              if (!have.includes(l.name)) await github.rest.issues.createLabel({ ...context.repo, ...l });
+            }
